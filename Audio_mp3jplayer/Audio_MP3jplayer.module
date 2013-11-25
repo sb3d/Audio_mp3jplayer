@@ -1,0 +1,286 @@
+<?php
+/**
+ * AudioMP3jplayer module
+ *
+ * This module helps you put MP3-Players in your pages. Has been tested with ProcessWire 2.3 (dev)
+ *
+ * By Steve Beuret
+ * Copyright (c) 2013, Steve Beuret
+ * http://sb3d.com
+ * 
+ * Based on Audio_MP3 module by Christoph Thelen
+ * Copyright (c) 2013, Christoph Thelen
+ * http://www.kixe.de
+ * 
+ * getID3() by James Heinrich <info@getid3.org>
+ * available at http://getid3.sourceforge.net or http://www.getid3.org
+ * released under multiple licenses
+ * 
+ * jPlayer Plugin for jQuery JavaScript Library
+ * http://www.jplayer.org
+ * Copyright (c) 2009 - 2013 Happyworm Ltd, Licensed under the MIT license.
+ * Author: Mark J Panaghiston
+ * 
+ * ProcessWire 2.x 
+ * Copyright (C) 2010 by Ryan Cramer 
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+*/
+ 
+class Audio_MP3jplayer extends Process implements Module {
+	/**
+	 *
+	 *
+	 * @return array
+	 *
+	 */
+	public static function getModuleInfo() {
+
+		return array(
+			'title' => 'Audio MP3 jplayer', 
+			'version' => 100, 
+			'summary' => 'Creates a Field to store MP3 audio files, extracts images and track info from id3 tags and generates player markup.',
+			'author' => 'Steve Beuret',
+			);
+	}
+
+    public function init() {
+	}
+	/* in callback:
+	$trackInfo = $options['audio']->trackInfo['tracks'];
+	That is an array of arrays indexed by track number (numbers come from id3 tags and typically start at 1). 
+	Example:
+	[6] => Array
+    (
+	    [file] => E:/dev/vhosts/pwshop/site/assets/files/1080/06_-_i_could_have_danced_all_night.mp3
+	    [url] => /site/assets/files/1080/06_-_i_could_have_danced_all_night.mp3
+	    [artist] => Sun Ra
+	    [album] => Sound Sun Pleasure!!
+	    [title] => I Could Have Danced All Night
+	    [genre] => Jazz
+	    [year] => 1953
+	    [time] => 3:11
+	)
+	*/
+	
+	
+	public function js_readyCode($trackList,$page) {	//Returns js code to be included in the page's ready function
+		//echo __FILE__.' '.__LINE__.' trackList: ';print_r($trackList);print PHP_EOL;
+		$js_readyCode = '
+	new jPlayerPlaylist({
+		jPlayer: "#jquery_jplayer_1",
+		cssSelectorAncestor: "#jp_container_1"
+	}, [
+';
+		foreach($trackList as $k => $track)$js_readyCode .= '
+		{
+			title:"'.addslashes($track->title).'",
+			mp3:"'.$track->url.'"
+		},';
+		$js_readyCode = chop($js_readyCode, ',');	//lose last commma
+		$js_readyCode .= '
+	], {
+		swfPath: "/site/templates/jPlayer",
+		supplied: "mp3",
+		wmode: "window",
+		smoothPlayBar: true,
+		keyEnabled: true
+	});
+';
+		return $js_readyCode;
+	}		
+	
+
+	
+	/*
+	Reads all the mp3 files (from the page's 'audio' field) collecting the id3 tag info
+	Any images it finds are put in the same assets folder. Named by their size in bytes so they don't repeat.
+	$tracks is an array of arrays indexed by track number.
+	*/
+	public function id3($page){	
+		global $config;	
+		
+		if ($page->audio) {
+			$audio_files = $page->audio;
+		} else {
+			//echo 'Nothing in $page->audio at line '.__LINE__.' of '.__FILE__.PHP_EOL;
+			return;
+		}
+		
+		$test = false;	//This and lots of if statements are here to help you figure out what's going on. 
+			
+		if($test)echo '$test turned on in '.__FILE__.' at line '.__LINE__.', audio file qty: '.count($audio_files).', image file qty: '.count($page->images).PHP_EOL;
+		
+		//get a list of page's existing image names
+		//TODO: configurable field name
+		$pageImageNames = array();
+		if(!empty($page->images)) foreach ($page->images as $image) $pageImageNames[] = $image->basename;
+
+		$tracks = array(); 
+		$images = array(); 
+		$imageSizes = array(); //detects dupes
+		$imgMimeToExt = array('image/jpeg'=>'jpg', 'image/gif'=>'gif', 'image/png'=>'png');
+		$path = str_replace('\\','/',$config->paths->assets.'files/'.$page->id).'/'; //where this page's files are
+		if($test)echo '$path = '.$path.' at line '.__LINE__.PHP_EOL;
+		$imagesCreated = 0;
+		$dataCreated = 0;
+		/*
+		foreach ($audio_file as $k=>$v) echo " k = $k\n"; 
+		 k = basename
+		 k = description
+		 k = tags
+		 k = formatted
+		 k = modified
+		 k = created
+		*/			 
+		foreach ($audio_files as $aindex=>$audio_file) {
+			$file = $path.$audio_file->basename;
+			if($test)echo '$file = '.$file.' at line '.__LINE__.PHP_EOL;
+
+			$title = ($audio_file->description) ? $audio_file->description : $audio_file->name;
+			if($test)echo '$title = '.$title.' at line '.__LINE__.PHP_EOL;
+			
+			$trackData = (array)$page->plus;
+			if(empty($trackData)){
+				if(empty($getID3)){
+					$PageEncoding = 'UTF-8';
+					//You may want to modify this array
+					$keepers = array('artist', 'album', 'title', 'genre', 'publisher', 'year');	//'year' can be a whole date, e.g. '2000 02 08'
+					require_once($config->paths->templates.'includes/getid3/getid3.php');
+					if($test)echo 'Loaded getid3.php at line '.__LINE__.PHP_EOL;
+					$getID3 = new getID3;
+					if($test)echo 'Instantiated ID3 object at line '.__LINE__.PHP_EOL;
+					$getID3->setOption(array('encoding' => $PageEncoding));
+				}
+				if($test)echo " analyze($file) for page #".$page->id.' '.__LINE__.PHP_EOL;
+				$id3 = $getID3->analyze($file);	//$file is a full path to the file
+				/*
+				If there's a failure, $id3 is an array like this:
+				Array
+				(
+				    [GETID3_VERSION] => 1.9.7-20130705
+				    [error] => Array
+				        (
+				            [0] => Could not open "E:\dev\vhosts\pwshop\site\assets\files\1087\01_-_tenere.mp3" (does not exist, or is not a file)
+				        )
+
+				)
+				*/				
+				getid3_lib::CopyTagsToComments($id3);
+				if($test)echo ' ID3 data count: '.count($id3['comments']).__LINE__.PHP_EOL;
+				//print_r($id3['comments']);
+				//print_r($id3);exit;
+				if(!empty($id3['comments'])){
+					if(empty($id3['comments_html']['track_number'][0])) continue;	//TODO: What if there's no track num?
+					$trackNumber = array_shift(explode('/', $id3['comments_html']['track_number'][0]));		//sometimes it's like: 4/6 (meaning track 4 of 6)
+					if(empty($trackNumber)) continue;	
+					$tracks[$trackNumber] = array('trackNumber'=>$trackNumber, 'file'=>$file, 'url'=>$audio_file->url, 'httpUrl'=>$audio_file->httpUrl);	//Save it indexed by its track number
+					foreach($keepers as $k)	if(!empty($id3['comments'][$k][0])) $tracks[$trackNumber][$k] = $id3['comments'][$k][0];
+					$tracks[$trackNumber]['time'] = $id3['playtime_string'];	//6:13
+					
+					$page->audio[$aindex]->plus = $tracks[$trackNumber];	//cache it in FieldtypeFilePlusData's plus field
+					$dataCreated++;
+					
+					if($test)print '$trackNumber = '.$trackNumber.' time: '.$tracks[$trackNumber]['time'].' at '.__LINE__.PHP_EOL;
+					if(!empty($id3['comments']['picture'][0])){	//IMAGE
+						$arr = $id3['comments']['picture'][0];	//TODO: there might be more than one image
+						$mimeType = $arr['image_mime'];
+						$image = $arr['data'];
+						$len = strlen($image);
+						if(!in_array($len, $imageSizes)){
+							$imageSizes[] = $len;
+							$ext = $imgMimeToExt[$mimeType];
+							if($test)print 'image type: '.$mimeType.' ext: '.$ext.' length: '.strlen($image).PHP_EOL;
+							$imageFile = count($imageSizes) . '.' . $ext;	//sequential numbering
+							$imageFile = $len . '.' . $ext;	//name it for it's size so that if we get it again we can ignore it
+							if(!in_array($imageFile, $pageImageNames)){	//don't replace an existing image having same name
+								if(! file_exists($path.$imageFile)){
+									if($test)print 'write image to: '.$path.$imageFile.PHP_EOL;
+									if(file_put_contents($path.$imageFile, $image )) $imagesCreated++;
+								}
+								else{
+									if($test)print 'Found extant image: '.$path.$imageFile.PHP_EOL;
+								}
+								//TODO: Assumes an image field called 'images' exists to hold them. Name should be configurable.
+		                        $img = new Pageimage($page->get('images'), $path.$imageFile);
+		                        if($test)print 'made new Pageimage at '.__LINE__.PHP_EOL;
+		                        $page->get('images')->add($img);
+		                        if($test)print 'Added to page->images at '.__LINE__.PHP_EOL;
+								if($test)echo '<img src="'.$imageFile.'" /><br/><br/>'.PHP_EOL;
+							}
+							elseif($test)echo 'Image already exists in $page: '.$imageFile.PHP_EOL;
+						}
+					}
+				}
+			}
+			else{	//use data from plus subfield
+				$n = $trackData['trackNumber'];
+				$tracks[$n] = $trackData;
+			}	
+			//print __LINE__.' <pre>';print_r($tracks[$trackNumber]);
+		}
+		if($dataCreated){
+			$of = $page->outputFormatting;
+			$page->setOutputFormatting(false);
+			$page->save('audio');	//save the 'audio' field of the PW $page otherwise they are just here for now
+			$page->setOutputFormatting($of);
+			if($test)print '$dataCreated = '.$dataCreated.' Saving page->audio at '.__LINE__.PHP_EOL;
+		}
+		if($imagesCreated){
+			$of = $page->outputFormatting;
+			$page->setOutputFormatting(false);
+			$page->save('images');	//save the 'images' field of the PW $page otherwise they are just here for now
+			$page->setOutputFormatting($of);
+			if($test)print '$imagesCreated = '.$imagesCreated.' Saving page->images at '.__LINE__.PHP_EOL;
+		}
+		ksort($tracks);
+		//$out = array('tracks'=>$tracks, 'images'=>$images); //could return images too but they're available via the page
+		$out = array('tracks'=>$tracks);
+		
+		//if all tracks have same album and artist make a heading from those fields
+		$k = 0; $pageTitle = '';
+		foreach($tracks as $k=>$v){
+			$str = (!empty($v['artist'])) ? $v['artist'].' / '.$v['album'] : $v['album'];
+			if(empty($pageTitle)) $pageTitle = $str;
+			elseif($pageTitle != $str)break;	//no concensus
+		}
+		$out['heading'] = ($k == count($tracks)) ? $pageTitle : '';	//FYI track numbering starts at 1, not 0
+		//print'<pre>'.__LINE__.' ';print_r($out);print'</pre>';	
+		return $out;
+	}
+
+	
+	/**
+     *
+     * install routine
+     */
+    public function ___install() {
+
+        //TODO: Assumes a field called 'audio' does not exist yet
+
+        $field_audio = new Field();
+        $field_audio->type = $this->modules->get("FieldtypeFilePlusData");
+        $field_audio->name = 'audio';
+        $field_audio->description = 'Upload your mp3 or mp3-zip files via drag and drop. Define an alternative title in the Description-Field. Default title is the name of the file.';
+        $field_audio->label = 'MP3 Audio File';
+        $field_audio->extensions = 'mp3';
+		$field_audio->columnWidth = 100;//in percent, default setting: 100
+		$field_audio->unzip = 1;// unzip archives automatically
+		$field_audio->collapsed =0;
+        $field_audio->size = 0;
+        $field_audio->maxlength = 0;
+        $field_audio->save();
+
+    }
+
+    /**
+     *
+     * uninstall routine
+     */
+    public function ___uninstall() {
+        $fields = wire('fields');
+        $fields->delete($fields->get('audio'));	//TODO: Should check that user hasn't already deleted it
+   }
+	
+}
