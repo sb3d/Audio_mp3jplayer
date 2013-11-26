@@ -77,3 +77,7 @@ Along with any other code I might need there, I call extendedReadyFn() if it exi
 Additional info:
 If you uncomment a line near the end of the id3 function (just after ksort) you can access an array of unique images recovered from the id3 this way: $audio->trackInfo['images'];
 On an old version of XAMPP the volume control would break if Apache's mod_deflate.so was enabled.
+
+2013-11-26 Updates
+One tiny change to Audio_MP3jplayer.module so it works with both newly created data and some legacy data I have
+Added a folder of things to help you setup a demo.

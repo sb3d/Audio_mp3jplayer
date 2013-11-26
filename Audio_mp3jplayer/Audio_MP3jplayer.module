@@ -73,11 +73,14 @@ class Audio_MP3jplayer extends Process implements Module {
 		cssSelectorAncestor: "#jp_container_1"
 	}, [
 ';
-		foreach($trackList as $k => $track)$js_readyCode .= '
+		foreach($trackList as $k => $track){
+			$track = (array)$track;	//should be unecessary since version 100
+			$js_readyCode .= '
 		{
-			title:"'.addslashes($track->title).'",
-			mp3:"'.$track->url.'"
+			title:"'.addslashes($track['title']).'",
+			mp3:"'.$track['url'].'"
 		},';
+		}
 		$js_readyCode = chop($js_readyCode, ',');	//lose last commma
 		$js_readyCode .= '
 	], {
