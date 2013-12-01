@@ -16,7 +16,15 @@ if(!empty($js_readyCode)){
 }
 
 //special for cd pages
+//user agent: "AppleCoreMedia/1.0.0.11B554a (iPad; U; CPU OS 7_0_4 like Mac OS X; en_us)"
+//playlistB.css hides audio controls. Use for iOS7, which blocks JS audio controls.
 $config->styles->add($config->urls->templates.'styles/playlist.css');
+if (stripos($_SERVER['HTTP_USER_AGENT'], ' OS 7_0') === false) {
+    $config->styles->add($config->urls->templates.'styles/playlistVolume.css');	
+}else{
+    $config->styles->add($config->urls->templates.'styles/playlistNoVolume.css');	
+}
+//$config->styles->add($config->urls->templates.'jPlayer/blue.monday/jplayer.blue.monday.css');
 $config->scripts->add($config->urls->templates.'jPlayer/jquery.jplayer.min.js');
 $config->scripts->add($config->urls->templates.'jPlayer/add-on/jplayer.playlist.min.js');
   
@@ -101,7 +109,7 @@ $config->scripts->add($config->urls->templates.'jPlayer/add-on/jplayer.playlist.
 	Audio_MP3jplayer &nbsp;by <a href="http://www.sb3d.com">SB3D</a><br/>
 	Powered&nbsp;by&nbsp;<a href='http://processwire.com'>ProcessWire</a> Open&nbsp;Source&nbsp;CMS/CMF
 </div>
-	<script src="http://code.jquery.com/jquery-2.0.3.min.js"></script>
+	<script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
 <?php	if(!empty($extendedReadyFn))print '<script type="text/javascript">
 '.$extendedReadyFn.'
 </script>

@@ -1,0 +1,10 @@
+	
+/* iOS7 - hide audio controls */
+div.jp-interface ul.jp-controls a.jp-unmute{display:none;}
+div.jp-interface ul.jp-controls a.jp-volume-max{display:none !important;}
+div.jp-type-playlist div.jp-interface ul.jp-controls a.jp-mute,
+div.jp-type-playlist div.jp-interface ul.jp-controls a.jp-unmute{display:none !important;}
+
+/* iOS7 - wider duration for hidden audio controls */
+div.jp-type-playlist div.jp-interface div.jp-duration,
+div.jp-type-playlist div.jp-progress{right:25px;}

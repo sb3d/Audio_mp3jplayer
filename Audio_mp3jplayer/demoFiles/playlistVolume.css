@@ -1,0 +1,19 @@
+
+div.jp-type-playlist div.jp-interface div.jp-duration{right:135px;}
+
+div.jp-volume-bar{
+	position:absolute;
+	top: .75em; right:10px;
+	height: .75em; width:50px;
+	background: #c9cdd1;
+	overflow:hidden;
+	cursor:pointer;	
+	}
+div.jp-type-playlist div.jp-volume-bar{right:20px;}
+div.jp-volume-bar-value{
+	width:0px; height:.75em;
+	background: #5400AF;
+	border:1px solid #3D007F;
+	}
+
+div.jp-type-playlist div.jp-progress{right:135px; left:70px;}

@@ -81,3 +81,55 @@ On an old version of XAMPP the volume control would break if Apache's mod_deflat
 2013-11-26 Updates
 One tiny change to Audio_MP3jplayer.module so it works with both newly created data and some legacy data I have
 Added a folder of things to help you setup a demo.
+
+2013-12-01 Updates
+1. Tested with jPlayer 2.5, was using 2.3 earlier. No change to the module file.
+2. Removed things we were not using from player's css
+3. Broke out some of the player's css to two files for conditional loading 
+	In the demo template file we now conditionally load one of two small css files to either show or not show audio controls
+	$config->styles->add($config->urls->templates.'styles/playlist.css');
+	if (stripos($_SERVER['HTTP_USER_AGENT'], ' OS 7_0') === false) {
+	    $config->styles->add($config->urls->templates.'styles/playlistVolume.css');	
+	}else{
+	    $config->styles->add($config->urls->templates.'styles/playlistNoVolume.css');	
+	}	
+Background for #3:
+	Problems with volume control when using current iOS 7 devices - Volume control not shown and not working.
+	Apple hath decreed: "On iOS devices, the audio level is always under the user’s physical control. The volume property is not settable in JavaScript."
+
+	See the Developer Guide -> jPlayer Constructor -> Parameters -> noVolume (about 40 percent of the way down the page).
+	http://www.jplayer.org/latest/developer-guide/#jPlayer-constructor
+	By default volume controls are hidden for iOS devices but you can pass settings for this to the constructor.
+	One can modify the defaults shown below replacing for example /ipad/ with something unlikely (e.g. /IGNOREipad/)
+	This then gets added to the constructor call in the module's js_readyCode() function
+	The default object is:
+	    noVolume: {
+	    ipad: /ipad/,
+	    iphone: /iphone/,
+	    ipod: /ipod/,
+	    android_pad: /android(?!.*?mobile)/,
+	    android_phone: /android.*?mobile/,
+	    blackberry: /blackberry/,
+	    windows_ce: /windows ce/,
+	    iemobile: /iemobile/,
+	    webos: /webos/,
+	    playbook: /playbook/
+	    }
+	Doing that will allow the volume controls to be displayed, but they won't work! 
+		
+	From https://developer.apple.com/library/safari/documentation/AudioVideo/Conceptual/Using_HTML5_Audio_Video/Device-SpecificConsiderations/Device-SpecificConsiderations.html
+		Volume Control in JavaScript
+
+		On the desktop, you can set and read the volume property of an <audio> or <video> element. This allows you to set the element’s audio volume relative to the computer’s current volume setting. A value of 1 plays sound at the normal level. A value of 0 silences the audio. Values between 0 and 1 attenuate the audio.
+
+		This volume adjustment can be useful, because it allows the user to mute a game, for example, while still listening to music on the computer.
+
+		On iOS devices, the audio level is always under the user’s physical control. The volume property is not settable in JavaScript. Reading the volume property always returns 1.
+	
+	Also:
+		https://developer.apple.com/library/safari/documentation/AudioVideo/Conceptual/Using_HTML5_Audio_Video/Device-SpecificConsiderations/Device-SpecificConsiderations.html
+		https://developer.apple.com/library/ios/documentation/MediaPlayer/Reference/MPMusicPlayerController_ClassReference/DeprecationAppendix/AppendixADeprecatedAPI.html#//apple_ref/occ/instp/MPMusicPlayerController/volume
+
+	There is a way to control volume from an iOS app, but not from a web page. 
+		http://ios-blog.co.uk/tutorials/controlling-system-output-volume-with-the-mpvolumeview-class-part-one/
+
